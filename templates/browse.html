@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Dataset List</title>
+</head>
+<body>
+    <h1> Uploaded Datasets</h1>
+    <a href="/">Upload New Dataset</a>
+    <ul>
+        {% for dataset in datasets %}
+            <li>
+                <strong>{{ dataset.name }}</strong><br>
+                <p>{{ dataset.description }}</p>
+                <a href="{{dataset.file_url}}" target="_blank">Download</a><br>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
