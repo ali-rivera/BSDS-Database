@@ -1,3 +1,5 @@
+#helper functions for AWS S3 upload
+
 def upload_file_to_s3(file_path, s3_key):
     import boto3
     import os
