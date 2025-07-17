@@ -18,12 +18,11 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 #connect to MongoDB
 connect(
-    db="mongodb",                    # Your DB name
-    username="mongo",               # Your root user
-    password="BSDSDATABASE",        # Your root password
+    db= os.getenv("MONGO_INITDB_DATABASE"),
+    username= os.getenv("MONGO_INITDB_ROOT_USERNAME"),
+    password= os.getenv("MONGO_INITDB_ROOT_PASSWORD"),
     host="localhost",
-    port=27017,
-    authentication_source="admin"  # Required for root auth!
+    port=27017
 )
 
 @app.route('/', methods=['GET', 'POST'])
@@ -42,6 +41,15 @@ def upload_dataset():
             file_url = upload_file_to_s3(temp_path, s3_key)
 
             if file_url:
+                existing = Dataset.objects(file_url=file_url).first()
+                if existing:
+                    os.remove(temp_path)
+                    return f"""
+                        <h2>Duplicate upload detected</h2>
+                        <p>This file already exists: <a href="{file_url}" target="_blank">View file</a></p>
+                        <a href="/">Back to upload</a> | <a href="/datasets">View all datasets</a>
+                    """
+
                 dataset = Dataset(
                     name=name,
                     description=description,
@@ -57,8 +65,14 @@ def upload_dataset():
 
 @app.route('/datasets')
 def datasets():
-    datasets = Dataset.objects.order_by('-uploaded_at')
-    return render_template('browse.html', datasets=datasets)
+    # datasets = Dataset.objects.order_by('-uploaded_at')
+    # return render_template('browse.html', datasets=datasets)
+    
+    all_datasets = Dataset.objects.order_by('-uploaded_at')
+    print("Found", len(all_datasets), "datasets")
+    for d in all_datasets:
+        print("-", d.name, d.file_url)
+    return render_template('browse.html', datasets=all_datasets)
 
 @app.route('/success')
 def success():

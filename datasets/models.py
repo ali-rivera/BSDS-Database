@@ -8,3 +8,6 @@ class Dataset(Document):
     description = StringField()
     file_url = StringField(required=True)  # Link to the actual file stored in S3
     uploaded_at = DateTimeField(default=lambda: datetime.datetime.now(pytz.timezone("America/New_York")))
+    meta = {
+        'collection': 'dataset'
+    }
