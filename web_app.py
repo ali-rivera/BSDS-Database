@@ -64,10 +64,7 @@ def upload_dataset():
     return render_template('upload.html')
 
 @app.route('/datasets')
-def datasets():
-    # datasets = Dataset.objects.order_by('-uploaded_at')
-    # return render_template('browse.html', datasets=datasets)
-    
+def datasets():    
     all_datasets = Dataset.objects.order_by('-uploaded_at')
     print("Found", len(all_datasets), "datasets")
     for d in all_datasets:
