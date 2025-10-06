@@ -1,13 +1,32 @@
+  #fully local S3 compatible storage using MinIO
 services:
-  
   mongo:
-    image: mongo:latest
-    env_file:
-      - .env
+    image: mongo:7
+    restart: unless-stopped
     ports:
       - "27017:27017"
-    volumes: 
+    env_file:
+      - ./.env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
       - mongodata:/data/db
+
+  minio:
+    image: quay.io/minio/minio:latest
+
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
 
 volumes:
   mongodata:
+  minio_data:

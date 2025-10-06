@@ -4,37 +4,59 @@ import boto3
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from botocore.client import Config
+
 
 #load AWS credentials
 load_dotenv()
 
-#initialize boto3 s3 client
-s3= boto3.client(
-    "s3",
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_REGION")
-)
+def get_bucket_name():
+    b = (
+        os.getenv("AWS_S3_BUCKET_NAME")
+    )
+    if not b:
+        raise RuntimeError("No S3 bucket env set")
+    return b
 
-def upload_file_to_s3(file_path, s3_key):
-    
+#initialize boto3 s3 client
+def get_s3_client():
+    endpoint = os.getenv("AWS_S3_ENDPOINT_URL") 
+    kwargs = {
+        "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "region_name": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+    }
+    if endpoint:
+        kwargs["endpoint_url"] = endpoint
+        kwargs["config"] = Config(signature_version="s3v4", s3={"addressing_style": "path"})
+    else:
+        # AWS: virtual-hosted style
+        kwargs["config"] = Config(s3={"addressing_style": "virtual"})
+    return boto3.client("s3", **kwargs)
+
+def upload_file_to_s3(file_path: str, s3_key: str) -> str | None:    
     """
     Uploads a file to S3 and returns the public file URL.
     file_path: local file path (e.g., 'datasets/bank.csv')
     s3_key: desired path/key in S3 (e.g., 'datasets/bank.csv')
     """
-    bucket_name = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    s3 = get_s3_client()
+    bucket = get_bucket_name()
 
     try:
         s3.upload_file(
             Filename=file_path,
-            Bucket=bucket_name,
+            Bucket=bucket,
             Key=s3_key,
         )
-        url = f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
-        return url
+        endpoint = os.getenv("AWS_S3_ENDPOINT_URL")
+        if endpoint:
+            return f"{endpoint.rstrip('/')}/{bucket}/{s3_key}"
+        return s3.generate_presigned_url(
+            "get_object", Params={"Bucket": bucket, "Key": s3_key}, ExpiresIn=3600
+        )
     except Exception as e:
-        print("Upload failed:", e)
+        print(f"Upload failed: Failed to upload {file_path} to {bucket}/{s3_key}: {e}")
         return None
     
 
@@ -43,7 +65,7 @@ def cleanup_orphaned_entries():
     Deletes a file from S3.
     s3_key: path/key in S3 (e.g., 'datasets/bank.csv')
     """
-    bucket_name = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    bucket_name = os.getenv("AWS_S3_BUCKET_NAME")
     mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
     mongo_pass = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
     mongo_db = os.getenv("MONGO_INITDB_DATABASE")
